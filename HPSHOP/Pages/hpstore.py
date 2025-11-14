@@ -230,16 +230,26 @@ class HPStorePage:
     def select_first_product(self, products):
         product = products[0]
 
-        # Get name from listing
+        # Get product name (fallback if .text is empty)
         name = product.text.strip()
         if not name:
-            try:
-                name = product.get_attribute("innerText").strip()
-            except:
-                name = "Unknown Product"
+            name = product.get_attribute("innerText") or ""
+            name = name.strip()
 
-        product.click()
-        return name  # <-- IMPORTANT
+        # Scroll into view (headless CI needs this)
+        try:
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", product)
+        except Exception:
+            pass
+
+        # Try normal click
+        try:
+            product.click()
+        except Exception:
+            # Headless fallback – force JS click
+            self.driver.execute_script("arguments[0].click();", product)
+
+        return name if name else "Unknown Product"
 
     def switch_to_product_window(self):
         windows = self.driver.window_handles
