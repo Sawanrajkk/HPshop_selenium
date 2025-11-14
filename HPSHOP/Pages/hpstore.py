@@ -246,7 +246,7 @@ class HPStorePage:
 
     def get_product_name_detail_page(self):
         try:
-            # Close newsletter popup if it appears (GitHub Actions always shows it)
+            # --- 1) close newsletter popup if present ---
             try:
                 self.driver.switch_to.frame("dy_overlay_iframe_104566362")
                 close_btn = self.driver.find_element(
@@ -255,18 +255,32 @@ class HPStorePage:
                 close_btn.click()
                 self.driver.switch_to.default_content()
                 time.sleep(1)
-                self.logs.append("Closed newsletter popup.")
-            except Exception:
-                # Popup does not exist
+            except:
                 self.driver.switch_to.default_content()
 
-            # Now safely get <h1> product title
-            product_detail_name = WebDriverWait(self.driver, 20).until(
+            # --- 2) switch to product iframe if present ---
+            try:
+                iframe = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        By.XPATH, "//iframe[contains(@name,'product') or contains(@id,'product')]"
+                    ))
+                )
+                self.driver.switch_to.frame(iframe)
+                self.logs.append("Switched to product iframe.")
+            except:
+                self.logs.append("No product iframe found. Using main page.")
+
+            # --- 3) now wait for <h1> ---
+            product_detail_name = WebDriverWait(self.driver, 25).until(
                 EC.visibility_of_element_located((By.TAG_NAME, "h1"))
             )
 
             name_on_page = product_detail_name.text.strip()
             self.logs.append(f"Product Name on Product Page: {name_on_page}")
+
+            # important: go back
+            self.driver.switch_to.default_content()
+
             return name_on_page
 
         except Exception as e:
