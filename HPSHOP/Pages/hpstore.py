@@ -246,7 +246,25 @@ class HPStorePage:
 
     def get_product_name_detail_page(self):
         try:
-            # --- 1) close newsletter popup if present ---
+            # -------------------------------
+            # 1) ENSURE PRODUCT TAB OPENED
+            # -------------------------------
+            for _ in range(10):
+                if len(self.driver.window_handles) > 1:
+                    break
+                time.sleep(1)
+
+            if len(self.driver.window_handles) > 1:
+                self.driver.switch_to.window(self.driver.window_handles[-1])
+                self.logs.append("Switched to product window.")
+            else:
+                self.logs.append("Product did NOT open in a new tab. Staying on same page.")
+
+            time.sleep(2)
+
+            # -------------------------------
+            # 2) CLOSE NEWSLETTER POPUP
+            # -------------------------------
             try:
                 self.driver.switch_to.frame("dy_overlay_iframe_104566362")
                 close_btn = self.driver.find_element(
@@ -258,30 +276,40 @@ class HPStorePage:
             except:
                 self.driver.switch_to.default_content()
 
-            # --- 2) switch to product iframe if present ---
+            # -------------------------------
+            # 3) SWITCH TO PRODUCT IFRAME
+            # -------------------------------
             try:
-                iframe = WebDriverWait(self.driver, 5).until(
+                iframe = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((
-                        By.XPATH, "//iframe[contains(@name,'product') or contains(@id,'product')]"
+                        By.XPATH,
+                        "//iframe[contains(@name,'product') or contains(@id,'product')]"
                     ))
                 )
                 self.driver.switch_to.frame(iframe)
                 self.logs.append("Switched to product iframe.")
             except:
-                self.logs.append("No product iframe found. Using main page.")
+                self.driver.switch_to.default_content()
+                self.logs.append("No product iframe. Using main page.")
 
-            # --- 3) now wait for <h1> ---
-            product_detail_name = WebDriverWait(self.driver, 25).until(
-                EC.visibility_of_element_located((By.TAG_NAME, "h1"))
+            # -------------------------------
+            # 4) WAIT FOR <h1> WITH BIG TIMEOUT
+            # -------------------------------
+            product_detail_name = WebDriverWait(self.driver, 40).until(
+                EC.presence_of_element_located((By.TAG_NAME, "h1"))
             )
 
             name_on_page = product_detail_name.text.strip()
             self.logs.append(f"Product Name on Product Page: {name_on_page}")
 
-            # important: go back
             self.driver.switch_to.default_content()
-
             return name_on_page
+
+        except Exception as e:
+            self.logs.append(f"[ERROR] Product page h1 NOT FOUND: {e}")
+            self.driver.save_screenshot("error_h1_not_found.png")
+            raise
+
 
         except Exception as e:
             self.logs.append(f"Failed to get product detail name. Error: {e}")
