@@ -145,7 +145,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import allure
 
-cclass HPStorePage:
+class HPStorePage:
     def __init__(self, driver, wait):
         self.driver = driver
         self.wait = wait
