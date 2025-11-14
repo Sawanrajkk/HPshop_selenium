@@ -12,27 +12,48 @@ if PROJECT_ROOT not in sys.path:
 # Try to reuse fixtures from selinum.conftest if available
 try:
     from selinum.conftest import driver, ss  # noqa: F401
-    # If import succeeds, pytest will discover those fixtures from this module.
 except Exception:
-    # Fallback fixtures (webdriver-manager + simple screenshot helper)
+    # Fallback fixtures for CI
     import pytest
     from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service as ChromeService
-    try:
-        from webdriver_manager.chrome import ChromeDriverManager
-    except Exception:
-        ChromeDriverManager = None
 
     @pytest.fixture(scope="function")
     def driver():
         options = webdriver.ChromeOptions()
-        options.add_argument("--start-maximized")
-        # options.add_argument("--headless=new")  # enable if desired
-        if ChromeDriverManager is not None:
-            service = ChromeService(ChromeDriverManager().install())
-            drv = webdriver.Chrome(service=service, options=options)
-        else:
-            drv = webdriver.Chrome(options=options)  # requires chromedriver on PATH
+
+        # Required for GitHub Actions (CI-safe)
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+
+        # Pretend to be a real browser to bypass bot-detection
+        options.add_argument(
+            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
+
+        # Hide automation fingerprint
+        options.add_argument("--disable-blink-features=AutomationControlled")
+
+        prefs = {
+            "profile.managed_default_content_settings.images": 1,
+            "profile.default_content_setting_values.cookies": 1,
+            "profile.default_content_setting_values.javascript": 1,
+        }
+        options.add_experimental_option("prefs", prefs)
+
+        drv = webdriver.Chrome(options=options)
+
+        # Remove navigator.webdriver=true
+        drv.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            """
+        })
+
         yield drv
         try:
             drv.quit()
@@ -52,8 +73,10 @@ except Exception:
                 self.seq = 0
                 self.driver = driver
                 self.root = Path(PROJECT_ROOT) / "screenshots"
+
             def _ensure(self):
                 self.root.mkdir(parents=True, exist_ok=True)
+
             def take(self, step: str):
                 self._ensure()
                 self.seq += 1
@@ -67,11 +90,14 @@ except Exception:
                             f.write(driver.get_screenshot_as_png())
                     except Exception:
                         pass
-                # try attach to allure if available
+
+                # attach to allure if possible
                 try:
                     with open(path, "rb") as f:
                         allure.attach(f.read(), name=fname, attachment_type=allure.attachment_type.PNG)
                 except Exception:
                     pass
+
                 return str(path)
+
         return SSHelper()
