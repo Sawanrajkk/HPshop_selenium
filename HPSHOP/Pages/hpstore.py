@@ -245,12 +245,34 @@ class HPStorePage:
         self.driver.switch_to.window(windows[-1])
 
     def get_product_name_detail_page(self):
-        product_detail_name = self.wait.until(
-            EC.visibility_of_element_located((By.TAG_NAME, "h1"))
-        )
-        name_on_page = product_detail_name.text.strip()
-        self.logs.append(f"Product Name on Product Page: {name_on_page}")
-        return name_on_page
+        try:
+            # Close newsletter popup if it appears (GitHub Actions always shows it)
+            try:
+                self.driver.switch_to.frame("dy_overlay_iframe_104566362")
+                close_btn = self.driver.find_element(
+                    By.XPATH, "//button[contains(@class,'close') or @aria-label='Close']"
+                )
+                close_btn.click()
+                self.driver.switch_to.default_content()
+                time.sleep(1)
+                self.logs.append("Closed newsletter popup.")
+            except Exception:
+                # Popup does not exist
+                self.driver.switch_to.default_content()
+
+            # Now safely get <h1> product title
+            product_detail_name = WebDriverWait(self.driver, 20).until(
+                EC.visibility_of_element_located((By.TAG_NAME, "h1"))
+            )
+
+            name_on_page = product_detail_name.text.strip()
+            self.logs.append(f"Product Name on Product Page: {name_on_page}")
+            return name_on_page
+
+        except Exception as e:
+            self.logs.append(f"Failed to get product detail name. Error: {e}")
+            self.driver.save_screenshot("error_product_detail_page.png")
+            raise
 
     def add_to_cart(self):
         add_to_cart_button = self.wait.until(EC.element_to_be_clickable((By.ID, "product-addtocart-button")))
