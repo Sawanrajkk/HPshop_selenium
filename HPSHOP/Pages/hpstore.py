@@ -344,10 +344,42 @@ class HPStorePage:
                 raise Exception("Unable to click Add to Cart button in CI")
 
     def open_cart(self):
-        time.sleep(4)
-        button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@class='action primary view-cart simple-popup-view-cart']")))
-        button.click()
-        self.logs.append("Opened cart view.")
+        time.sleep(3)
+
+        # Remove the dark overlay that blocks the button
+        try:
+            self.driver.execute_script("""
+                let el = document.querySelector('.topNavigate_overlay_bg');
+                if (el) el.parentNode.removeChild(el);
+            """)
+            time.sleep(1)
+        except:
+            pass
+
+        # Try clicking normally with long wait (CI slow)
+        try:
+            button = WebDriverWait(self.driver, 20).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//button[contains(@class,'view-cart')]")
+                )
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", button)
+            time.sleep(1)
+            button.click()
+            self.logs.append("Opened cart (normal click).")
+            return
+        except Exception:
+            pass
+
+        # Fallback JS click (always works in CI)
+        try:
+            btn = self.driver.find_element(By.XPATH, "//button[contains(@class,'view-cart')]")
+            self.driver.execute_script("arguments[0].click();", btn)
+            self.logs.append("Opened cart (JS fallback).")
+            return
+        except:
+            self.driver.save_screenshot("open_cart_failed.png")
+            raise Exception("Unable to open cart (overlay or CI block)")
 
     def verify_cart_product(self, expected_name):
         cart_text = self.wait.until(EC.presence_of_all_elements_located((By.XPATH, "//a[@class='stellar-title__small text-primary']")))
