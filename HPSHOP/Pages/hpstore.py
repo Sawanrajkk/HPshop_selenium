@@ -145,7 +145,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import allure
 
-class HPStorePage:
+cclass HPStorePage:
     def __init__(self, driver, wait):
         self.driver = driver
         self.wait = wait
@@ -194,16 +194,34 @@ class HPStorePage:
         except Exception as e:
             self.logs.append(f"Unable to search for product. Error: {e}")
 
+    # ------------------------------------------------------------
+    # ✅ FIXED VERSION — ONLY THIS FUNCTION UPDATED
+    # ------------------------------------------------------------
     def get_products(self):
         try:
-            self.wait.until(
+            # Scroll down so GitHub Actions loads products
+            try:
+                self.driver.execute_script("window.scrollTo(0, 1500);")
+                time.sleep(2)
+            except:
+                pass
+
+            # Increase wait time for CI (slow VM)
+            wait = WebDriverWait(self.driver, 25)
+
+            # Wait for any product link to appear
+            wait.until(
                 lambda d: d.find_elements(By.XPATH, "//a[contains(@class,'product-item-link')]")
             )
+
             products = self.driver.find_elements(By.XPATH, "//a[contains(@class,'product-item-link')]")
+
             if not products:
                 raise Exception("No products found on the page.")
+
             self.logs.append(f"Number of products found: {len(products)}")
             return products
+
         except Exception as e:
             self.logs.append(f"Could not load products. Error: {e}")
             self.driver.save_screenshot("error_products_not_found.png")
