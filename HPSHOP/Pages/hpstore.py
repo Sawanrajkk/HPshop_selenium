@@ -317,12 +317,31 @@ class HPStorePage:
             raise
 
     def add_to_cart(self):
-        add_to_cart_button = self.wait.until(EC.element_to_be_clickable((By.ID, "product-addtocart-button")))
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", add_to_cart_button)
-        time.sleep(3)
-        add_to_cart_button.click()
-        self.logs.append("Clicked 'Add to cart' button.")
-        self.logs.append("Item should now be in cart.")
+        # Scroll deep so CI loads everything
+        try:
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+        except:
+            pass
+
+        # HP website takes long to activate button → wait up to 30 sec
+        try:
+            add_to_cart_button = WebDriverWait(self.driver, 30).until(
+                EC.element_to_be_clickable((By.ID, "product-addtocart-button"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", add_to_cart_button)
+            time.sleep(2)
+            add_to_cart_button.click()
+            self.logs.append("Clicked add to cart.")
+        except Exception:
+            # JS fallback click
+            try:
+                btn = self.driver.find_element(By.ID, "product-addtocart-button")
+                self.driver.execute_script("arguments[0].click();", btn)
+                self.logs.append("Clicked add to cart using JS fallback.")
+            except:
+                self.driver.save_screenshot("add_to_cart_failed.png")
+                raise Exception("Unable to click Add to Cart button in CI")
 
     def open_cart(self):
         time.sleep(4)
