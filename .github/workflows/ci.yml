@@ -34,10 +34,9 @@ jobs:
         run: |
           sudo apt-get install -y chromium-driver
 
-
+      # ⭐ FIXED: add inner HPSHOP folder to Python path ⭐
       - name: Add project to PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)/HPSHOP" >> $GITHUB_ENV
 
       - name: Run Pytests
-        run: |
-          pytest -q
+        run: pytest -q
