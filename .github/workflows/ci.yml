@@ -2,7 +2,7 @@ name: Run All Pytests
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -23,20 +23,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # ⭐ Correct Chrome installation
       - name: Install Google Chrome
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./google-chrome-stable_current_amd64.deb
+          sudo apt-get install -y google-chrome-stable
 
+      # ⭐ Install ChromeDriver matching installed Chrome
       - name: Install ChromeDriver
-        run: |
-          sudo apt-get install -y chromium-driver
+        uses: nanasess/setup-chromedriver@v2
 
-      # ⭐ FIXED: add inner HPSHOP folder to Python path ⭐
+      # ⭐ Add inner directory (HPSHOP) to Python path
       - name: Add project to PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)/HPSHOP" >> $GITHUB_ENV
 
+      # ⭐ Run tests in headless mode
       - name: Run Pytests
-        run: pytest -q
+        run: |
+          pytest -q
