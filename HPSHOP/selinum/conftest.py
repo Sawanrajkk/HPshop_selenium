@@ -12,13 +12,19 @@ if PROJECT_ROOT not in sys.path:
 def driver():
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
-    # options.add_argument("--headless=new")  # enable for CI
+
+    # ⭐ REQUIRED FOR GITHUB ACTIONS (DO NOT REMOVE)
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
     drv = webdriver.Chrome(options=options)
     yield drv
     try:
         drv.quit()
     except Exception:
         pass
+
 
 @pytest.fixture(scope="function")
 def ss(request, driver):
@@ -27,11 +33,14 @@ def ss(request, driver):
             self.test_name = request.node.nodeid
             self.seq = 0
             self.driver = driver
+
         def take(self, step: str):
             self.seq += 1
             return take_screenshot(self.driver, self.test_name, step, self.seq)
+
     helper = SSHelper()
     yield helper
+
 
 def pytest_runtest_makereport(item, call):
     if call.when == "call":
