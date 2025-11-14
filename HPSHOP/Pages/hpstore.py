@@ -144,7 +144,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import allure
-
+from selenium.webdriver.support.ui import WebDriverWait
 class HPStorePage:
     def __init__(self, driver, wait):
         self.driver = driver
