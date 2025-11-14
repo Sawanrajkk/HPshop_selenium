@@ -228,93 +228,37 @@ class HPStorePage:
             raise
 
     def select_first_product(self, products):
-        product_name = products[0].text
-        self.logs.append(f"Selected Product Name (from listing): {product_name}")
-        try:
-            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", products[0])
-            time.sleep(1)
-            products[0].click()
-            self.logs.append("Clicked on the first product.")
-        except:
-            self.driver.execute_script("arguments[0].click();", products[0])
-            self.logs.append("Clicked first product using JS fallback.")
-        return product_name
+        product = products[0]
+
+        # Get name from listing
+        name = product.text.strip()
+        if not name:
+            try:
+                name = product.get_attribute("innerText").strip()
+            except:
+                name = "Unknown Product"
+
+        product.click()
+        return name  # <-- IMPORTANT
 
     def switch_to_product_window(self):
         windows = self.driver.window_handles
         self.driver.switch_to.window(windows[-1])
 
     def get_product_name_detail_page(self):
-        try:
-            # -------------------------------
-            # 1) ENSURE PRODUCT TAB OPENED
-            # -------------------------------
-            for _ in range(10):
-                if len(self.driver.window_handles) > 1:
-                    break
-                time.sleep(1)
+        elem = WebDriverWait(self.driver, 20).until(
+            EC.visibility_of_element_located((By.TAG_NAME, "h1"))
+        )
+        name = elem.text.strip()
 
-            if len(self.driver.window_handles) > 1:
-                self.driver.switch_to.window(self.driver.window_handles[-1])
-                self.logs.append("Switched to product window.")
-            else:
-                self.logs.append("Product did NOT open in a new tab. Staying on same page.")
-
-            time.sleep(2)
-
-            # -------------------------------
-            # 2) CLOSE NEWSLETTER POPUP
-            # -------------------------------
+        if not name:
             try:
-                self.driver.switch_to.frame("dy_overlay_iframe_104566362")
-                close_btn = self.driver.find_element(
-                    By.XPATH, "//button[contains(@class,'close') or @aria-label='Close']"
-                )
-                close_btn.click()
-                self.driver.switch_to.default_content()
-                time.sleep(1)
+                name = elem.get_attribute("innerText").strip()
             except:
-                self.driver.switch_to.default_content()
+                name = "Unknown Product"
 
-            # -------------------------------
-            # 3) SWITCH TO PRODUCT IFRAME
-            # -------------------------------
-            try:
-                iframe = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((
-                        By.XPATH,
-                        "//iframe[contains(@name,'product') or contains(@id,'product')]"
-                    ))
-                )
-                self.driver.switch_to.frame(iframe)
-                self.logs.append("Switched to product iframe.")
-            except:
-                self.driver.switch_to.default_content()
-                self.logs.append("No product iframe. Using main page.")
-
-            # -------------------------------
-            # 4) WAIT FOR <h1> WITH BIG TIMEOUT
-            # -------------------------------
-            product_detail_name = WebDriverWait(self.driver, 40).until(
-                EC.presence_of_element_located((By.TAG_NAME, "h1"))
-            )
-
-            name_on_page = product_detail_name.text.strip()
-            self.logs.append(f"Product Name on Product Page: {name_on_page}")
-
-            self.driver.switch_to.default_content()
-            return name_on_page
-
-        except Exception as e:
-            self.logs.append(f"[ERROR] Product page h1 NOT FOUND: {e}")
-            self.driver.save_screenshot("error_h1_not_found.png")
-            raise
-
-
-        except Exception as e:
-            self.logs.append(f"Failed to get product detail name. Error: {e}")
-            self.driver.save_screenshot("error_product_detail_page.png")
-            raise
+        self.logs.append(f"Product Name on Product Page: {name}")
+        return name
 
     def add_to_cart(self):
         # Scroll deep so CI loads everything
